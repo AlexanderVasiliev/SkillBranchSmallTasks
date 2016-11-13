@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-
+import fetch from 'node-fetch';
+import _ from 'lodash';
 
 const app = express();
 app.use(cors());
@@ -50,7 +51,70 @@ app.get('/task2B', (req, res) => {
   res.send(shortName);
 });
 
+//TASK 3A **********************************************************************************************
+const pcUrl = 'https://gist.githubusercontent.com/isuvorov/ce6b8d87983611482aac89f6d7bc0037/raw/pc.json';
 
+let pc = {};
+fetch(pcUrl)
+  .then(async (res) => {
+    pc = await res.json();
+  })
+  .catch(err => {
+    console.log('Чтото пошло не так:', err);
+  });
+
+
+  function pcPart(path) {
+
+    const toSearch = path.match(/\/task3A\/([a-zA-Z0-9\-\.\[\]]+)\/?([a-zA-Z0-9\-\.\[\]]+)?\/?([a-zA-Z0-9\-\.\[\]]+)?/);
+    if (!toSearch) return pc;
+    console.log(toSearch);
+    if (toSearch[1] === 'volumes') {
+      let res = {};
+      let c = 0;
+      let d = 0;
+      pc.hdd.forEach(function (item, i) {
+        if (item.volume === 'C:') {
+          c += item.size;
+        }
+        if (item.volume === 'D:') {
+          d += item.size;
+        }
+      });
+      res['C:'] = c + 'B';
+      res['D:'] = d + 'B';
+      return res;
+    } else
+    if (toSearch[3]) {
+      let tmp = _.pick(pc, [toSearch[1]]);
+      let tmp2 = _.pick(tmp[toSearch[1]], [toSearch[2]]);
+      let res = _.pick(tmp2[toSearch[2]], [toSearch[3]])[toSearch[3]];
+      if (res === {} || res === undefined) return 'Not found';
+      return res;
+    } else
+    if (toSearch[2]) {
+      let tmp2 = _.pick(pc, [toSearch[1]]);
+      let res =  _.pick(tmp2[toSearch[1]], [toSearch[2]])[toSearch[2]];
+      if (res === {} || res === undefined) return 'Not found';
+       return res;
+    } else
+    if (toSearch[1]) {
+      let res =  _.pick(pc, [toSearch[1]])[toSearch[1]];
+      //console.log(res);
+      if (res === {} || res === undefined) return 'Not found';
+      return res;
+    } else return 'Not found';
+  }
+
+app.get('/task3A/*', (req, res) => {
+  console.log(req.path);
+  const ans = pcPart(req.path);
+  if (ans === 'Not found') res.status(404).send('Not found');
+  else res.status(200).json(ans);
+  res.end();
+});
+
+//**************************************************************************************************
 app.listen(8080, () => {
   console.log('Listening port 8080');
 });
